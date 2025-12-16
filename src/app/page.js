@@ -87,7 +87,7 @@ export default function Home() {
   return (
     <main>
       <div className="topbar">
-        <img src="/img/logo.png" alt="MyGamesInventory Logo" />
+        <img src="/img/logo.png" alt="MyGamesInventory Logo" className="topbar-logo" />
         <div className="auth">
           {/* In the old app this had #filters, #who, login/logout.
               In your new app, Navbar handles auth UI via Clerk. */}
