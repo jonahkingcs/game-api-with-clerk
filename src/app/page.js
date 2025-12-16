@@ -23,7 +23,7 @@ export default function Home() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error("GET /api/games failed:", res.status, text);
+        console.log("GET /api/games failed:", res.status, text);
         setGames([]);
         return;
       }
