@@ -1,65 +1,194 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Navbar from "@/components/Navbar";
+
+function unique(values) {
+  return [...new Set(values)].sort();
+}
 
 export default function Home() {
+  const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [genre, setGenre] = useState("");
+  const [franchise, setFranchise] = useState("");
+  const [consoleVal, setConsoleVal] = useState("");
+  const [q, setQ] = useState("");
+
+  async function loadGames() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/games");
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("GET /api/games failed:", res.status, text);
+        setGames([]);
+        return;
+      }
+
+      const text = await res.text();
+      console.log("RAW /api/games response:", text);
+
+      const data = text ? JSON.parse(text) : { Games: [] };
+      setGames(data.Games || []);
+    } catch (e) {
+      console.error(e);
+      setGames([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadGames();
+  }, []);
+
+  const genreOptions = useMemo(
+    () => unique(games.map((g) => g.genre).filter(Boolean)),
+    [games]
+  );
+  const franchiseOptions = useMemo(
+    () => unique(games.map((g) => g.franchise).filter(Boolean)),
+    [games]
+  );
+  const consoleOptions = useMemo(
+    () => unique(games.map((g) => g.console).filter(Boolean)),
+    [games]
+  );
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+
+    return games.filter((g) => {
+      if (genre && (g.genre || "").toLowerCase() !== genre.toLowerCase()) return false;
+      if (franchise && (g.franchise || "").toLowerCase() !== franchise.toLowerCase()) return false;
+      if (consoleVal && (g.console || "").toLowerCase() !== consoleVal.toLowerCase()) return false;
+
+      if (!query) return true;
+
+      const hay = [
+        g.title,
+        g.description,
+        Array.isArray(g.characters) ? g.characters.join(" ") : g.characters,
+        g.franchise,
+        g.console,
+        g.genre,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return hay.includes(query);
+    });
+  }, [games, genre, franchise, consoleVal, q]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main>
+      <div className="topbar">
+        <img src="/img/logo.png" alt="MyGamesInventory Logo" />
+        <div className="auth">
+          {/* In the old app this had #filters, #who, login/logout.
+              In your new app, Navbar handles auth UI via Clerk. */}
+          <Navbar />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+
+      <section className="controls">
+        <label>
+          Genre:
+          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+            <option value="">All</option>
+            {genreOptions.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Franchise:
+          <select value={franchise} onChange={(e) => setFranchise(e.target.value)}>
+            <option value="">All</option>
+            {franchiseOptions.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Console:
+          <select value={consoleVal} onChange={(e) => setConsoleVal(e.target.value)}>
+            <option value="">All</option>
+            {consoleOptions.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="search">
+          Search:
+          <input
+            type="search"
+            placeholder="Search title, description, characters"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
+      </section>
+
+      <section id="results">
+        {loading ? (
+          <p className="empty">Loading...</p>
+        ) : filtered.length === 0 ? (
+          <p className="empty">No results</p>
+        ) : (
+          filtered.map((g) => {
+            // same image logic as before
+            const raw = g.image || "";
+            let imageSrc = "https://via.placeholder.com/150x100?text=No+Image";
+            if (raw) {
+              if (/^https?:\/\//i.test(raw)) imageSrc = raw;
+              else imageSrc = raw.startsWith("/") ? raw : `/${raw}`;
+            }
+
+            return (
+              <article className="game" key={g._id}>
+                <div className="card-header">
+                  <h2>{g.title}</h2>
+
+                  <div className="meta">
+                    <span>{g.console || "Unknown console"}</span> •{" "}
+                    <span>{g.release_date || "Unknown date"}</span>
+                  </div>
+
+                  {g.description ? <p className="desc">{g.description}</p> : null}
+
+                  <p className="chars">
+                    <strong>Characters:</strong>{" "}
+                    {Array.isArray(g.characters) ? g.characters.join(", ") : g.characters || ""}
+                  </p>
+
+                  <p className="devpub">
+                    {g.developer ? `${g.developer}` : ""}
+                    {g.publisher ? ` — ${g.publisher}` : ""}
+                  </p>
+
+                  <p className="genre">Genre: {g.genre || "—"}</p>
+                </div>
+
+                <img src={imageSrc} alt={`${g.title} cover image`} />
+              </article>
+            );
+          })
+        )}
+      </section>
+    </main>
   );
 }
